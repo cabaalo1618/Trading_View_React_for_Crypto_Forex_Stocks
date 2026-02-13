@@ -5,6 +5,7 @@ import { useApp } from "../state/AppContext";
 import { useIndicators } from "../state/IndicatorContext";
 import { calculateFibonacciLevels } from "../indicators/fibonacci";
 import { calculateRSI } from "../indicators/rsi";
+import { CrosshairMode } from "lightweight-charts";
 
 export default function Chart() {
   const containerRef = useRef(null);
@@ -46,7 +47,19 @@ export default function Chart() {
         vertLines: { color: "rgba(42,46,57,0.3)" },
         horzLines: { color: "rgba(42,46,57,0.3)" }
       },
-      crosshair: { mode: 1 }
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: {
+          width: 1,
+          color: "rgba(255,255,255,0.2)",
+          style: 0,
+        },
+        horzLine: {
+          width: 1,
+          color: "rgba(255,255,255,0.2)",
+          style: 0,
+        }
+      }
     });
 
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
@@ -74,9 +87,37 @@ export default function Chart() {
     });
 
     rsiSeriesRef.current = rsiChartRef.current.addSeries(LineSeries, {
-  color: indicators.rsi.color,
-  lineWidth: 2
-});
+      color: indicators.rsi.color,
+      lineWidth: 2
+    });
+    // ===== RSI LEVELS =====
+    rsiSeriesRef.current.createPriceLine({
+      price: 70,
+      color: "#ff5252",
+      lineWidth: 1,
+      lineStyle: 2, // dashed
+      axisLabelVisible: true,
+      title: "Overbought"
+    });
+
+    rsiSeriesRef.current.createPriceLine({
+      price: 30,
+      color: "#4caf50",
+      lineWidth: 1,
+      lineStyle: 2,
+      axisLabelVisible: true,
+      title: "Oversold"
+    });
+
+    rsiSeriesRef.current.createPriceLine({
+      price: 50,
+      color: "rgba(255,255,255,0.3)",
+      lineWidth: 1,
+      lineStyle: 0, // solid
+      axisLabelVisible: true,
+      title: "Mid"
+    });
+
 
     // Resize
     const resize = new ResizeObserver(entries => {

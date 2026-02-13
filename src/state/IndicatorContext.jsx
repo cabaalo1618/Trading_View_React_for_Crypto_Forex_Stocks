@@ -23,16 +23,17 @@ export function IndicatorProvider({ children }) {
       color: "#8884d8",
       pane: "overlay"
     },
-    fibonacci: {
-      enabled: false,
-      mode: "manual", // "manual" | "draw"
-      high: null,
-      low: null,
-      anchor1: null, // ponto do mouse (price + index)
-      anchor2: null,
-      levels: [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1],
-      color: "#f5b642"
-    }
+fibonacci: {
+  enabled: false,
+  mode: "manual",
+  high: null,
+  low: null,
+  levels: [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1],
+  color: "#f5b642",
+  lineStyle: "dashed",
+  lineWidth: 1
+}
+
 
   });
 

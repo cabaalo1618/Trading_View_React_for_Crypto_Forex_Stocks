@@ -59,18 +59,58 @@ export default function IndicatorsPanel() {
           <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}>
             <input
               placeholder="High"
-              type="number"
-              value={fib.high ?? ""}
-              onChange={e => updateIndicator("fibonacci", { high: Number(e.target.value) })}
+              type="text"
+              value={indicators.fibonacci.high ?? ""}
+              onChange={e => {
+                const v = e.target.value.replace(",", ".");
+                if (!isNaN(v) || v === "") {
+                  updateIndicator("fibonacci", { high: v === "" ? null : parseFloat(v) });
+                }
+              }}
             />
 
             <input
               placeholder="Low"
-              type="number"
-              value={fib.low ?? ""}
-              onChange={e => updateIndicator("fibonacci", { low: Number(e.target.value) })}
+              type="text"
+              value={indicators.fibonacci.low ?? ""}
+              onChange={e => {
+                const v = e.target.value.replace(",", ".");
+                if (!isNaN(v) || v === "") {
+                  updateIndicator("fibonacci", { low: v === "" ? null : parseFloat(v) });
+                }
+              }}
             />
+
+            <div style={{ marginTop: "0.5rem" }}>
+              <label>Tipo de linha</label>
+              <select
+                value={indicators.fibonacci.lineStyle}
+                onChange={e =>
+                  updateIndicator("fibonacci", { lineStyle: e.target.value })
+                }
+              >
+                <option value="solid">Sólida</option>
+                <option value="dashed">Tracejada</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Espessura</label>
+              <input
+                type="range"
+                min="1"
+                max="4"
+                value={indicators.fibonacci.lineWidth}
+                onChange={e =>
+                  updateIndicator("fibonacci", { lineWidth: Number(e.target.value) })
+                }
+              />
+            </div>
+
+
+
           </div>
+
         )}
       </div>
     </div>

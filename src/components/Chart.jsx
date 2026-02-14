@@ -1,41 +1,59 @@
 import { useEffect, useRef } from "react";
-import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
+import {
+  createChart,
+  CandlestickSeries,
+  LineSeries,
+  CrosshairMode
+} from "lightweight-charts";
+
 import { fetchKlines } from "../api/binance";
 import { useApp } from "../state/AppContext";
 import { useIndicators } from "../state/IndicatorContext";
+
 import { calculateFibonacciLevels } from "../indicators/fibonacci";
 import { calculateRSI } from "../indicators/rsi";
-import { CrosshairMode } from "lightweight-charts";
+import { calculateMA } from "../indicators/movingAverage";
 
 export default function Chart() {
+
+  // REFS
+ 
   const containerRef = useRef(null);
   const rsiContainerRef = useRef(null);
 
   const chartRef = useRef(null);
   const rsiChartRef = useRef(null);
 
-  const seriesRef = useRef(null);
+  const candleSeriesRef = useRef(null);
   const rsiSeriesRef = useRef(null);
+  const maSeriesRef = useRef(null);
 
   const fibLinesRef = useRef([]);
+  const labelRef = useRef(null);
+
+ 
+  // GLOBAL STATE
 
   const { symbol, timeframe } = useApp();
   const { indicators } = useIndicators();
 
-  // Remove linhas de Fibonacci antigas
+  // HELPERS
+
   function clearFib() {
-    if (!seriesRef.current) return;
-    fibLinesRef.current.forEach(line => {
-      seriesRef.current.removePriceLine(line);
-    });
+    if (!candleSeriesRef.current) return;
+    fibLinesRef.current.forEach(line =>
+      candleSeriesRef.current.removePriceLine(line)
+    );
     fibLinesRef.current = [];
   }
 
-  // Criação dos gráficos
+
+  // CREATE CHARTS (RUN ONCE)
+
   useEffect(() => {
     if (!containerRef.current || !rsiContainerRef.current) return;
 
-    // Main chart
+    // -------- MAIN PRICE CHART --------
     chartRef.current = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height: 400,
@@ -48,21 +66,11 @@ export default function Chart() {
         horzLines: { color: "rgba(42,46,57,0.3)" }
       },
       crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: {
-          width: 1,
-          color: "rgba(255,255,255,0.2)",
-          style: 0,
-        },
-        horzLine: {
-          width: 1,
-          color: "rgba(255,255,255,0.2)",
-          style: 0,
-        }
+        mode: CrosshairMode.Normal
       }
     });
 
-    seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
+    candleSeriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: "#26a69a",
       downColor: "#ef5350",
       borderUpColor: "#26a69a",
@@ -71,7 +79,13 @@ export default function Chart() {
       wickDownColor: "#ef5350"
     });
 
-    // RSI chart
+    // Moving Average
+    maSeriesRef.current = chartRef.current.addSeries(LineSeries, {
+      color: "#ffd54f",
+      lineWidth: 2
+    });
+
+    // -------- RSI CHART --------
     rsiChartRef.current = createChart(rsiContainerRef.current, {
       width: rsiContainerRef.current.clientWidth,
       height: 150,
@@ -90,36 +104,27 @@ export default function Chart() {
       color: indicators.rsi.color,
       lineWidth: 2
     });
-    // ===== RSI LEVELS =====
-    rsiSeriesRef.current.createPriceLine({
-      price: 70,
-      color: "#ff5252",
-      lineWidth: 1,
-      lineStyle: 2, // dashed
-      axisLabelVisible: true,
-      title: "Overbought"
-    });
 
-    rsiSeriesRef.current.createPriceLine({
-      price: 30,
-      color: "#4caf50",
-      lineWidth: 1,
-      lineStyle: 2,
-      axisLabelVisible: true,
-      title: "Oversold"
-    });
+    // RSI Levels
+    rsiSeriesRef.current.createPriceLine({ price: 70, color: "#ff5252", lineStyle: 2 });
+    rsiSeriesRef.current.createPriceLine({ price: 30, color: "#4caf50", lineStyle: 2 });
+    rsiSeriesRef.current.createPriceLine({ price: 50, color: "rgba(255,255,255,0.3)" });
 
-    rsiSeriesRef.current.createPriceLine({
-      price: 50,
-      color: "rgba(255,255,255,0.3)",
-      lineWidth: 1,
-      lineStyle: 0, // solid
-      axisLabelVisible: true,
-      title: "Mid"
-    });
+    // -------- LABEL --------
+    const label = document.createElement("div");
+    label.style.position = "absolute";
+    label.style.top = "8px";
+    label.style.left = "12px";
+    label.style.color = "#fff";
+    label.style.fontSize = "14px";
+    label.style.fontWeight = "600";
+    label.style.pointerEvents = "none";
+    label.style.fontFamily = "monospace";
 
+    containerRef.current.appendChild(label);
+    labelRef.current = label;
 
-    // Resize
+    // -------- RESIZE --------
     const resize = new ResizeObserver(entries => {
       const { width } = entries[0].contentRect;
       chartRef.current.applyOptions({ width });
@@ -132,28 +137,49 @@ export default function Chart() {
       resize.disconnect();
       chartRef.current.remove();
       rsiChartRef.current.remove();
+      label.remove();
     };
   }, []);
 
-  // Buscar candles e calcular RSI
+
+  // LOAD DATA + INDICATORS
+
   useEffect(() => {
-    if (!seriesRef.current || !rsiSeriesRef.current) return;
+    if (!candleSeriesRef.current) return;
 
     fetchKlines(symbol, timeframe).then(data => {
-      seriesRef.current.setData(data);
+      candleSeriesRef.current.setData(data);
 
+      // Label
+      if (labelRef.current) {
+        labelRef.current.innerText = `${symbol} · ${timeframe}`;
+      }
+
+      // MA
+      if (indicators.ma.enabled) {
+        maSeriesRef.current.setData(
+          calculateMA(data, indicators.ma.period)
+        );
+      } else {
+        maSeriesRef.current.setData([]);
+      }
+
+      // RSI
       if (indicators.rsi.enabled) {
-        const rsiData = calculateRSI(data, indicators.rsi.period);
-        rsiSeriesRef.current.setData(rsiData);
+        rsiSeriesRef.current.setData(
+          calculateRSI(data, indicators.rsi.period)
+        );
       } else {
         rsiSeriesRef.current.setData([]);
       }
     });
-  }, [symbol, timeframe, indicators.rsi.enabled, indicators.rsi.period]);
+  }, [symbol, timeframe, indicators]);
 
-  // Fibonacci
+
+  // FIBONACCI
+
   useEffect(() => {
-    if (!seriesRef.current) return;
+    if (!candleSeriesRef.current) return;
 
     clearFib();
 
@@ -167,7 +193,7 @@ export default function Chart() {
     );
 
     levels.forEach(l => {
-      const line = seriesRef.current.createPriceLine({
+      const line = candleSeriesRef.current.createPriceLine({
         price: l.price,
         color: fib.color,
         lineWidth: fib.lineWidth || 1,
@@ -179,6 +205,9 @@ export default function Chart() {
       fibLinesRef.current.push(line);
     });
   }, [indicators.fibonacci]);
+
+
+  // UI
 
   return (
     <>

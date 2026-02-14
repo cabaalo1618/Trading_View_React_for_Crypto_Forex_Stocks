@@ -17,7 +17,7 @@ export default function IndicatorsPanel() {
       {/* Botões */}
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
         <IndicatorButton name="rsi" label="RSI" />
-        <IndicatorButton name="ema" label="EMA" />
+        <IndicatorButton name="ma" label="MA" />
         <IndicatorButton name="bollinger" label="Bollinger" />
         <IndicatorButton name="fibonacci" label="Fibonacci" />
       </div>

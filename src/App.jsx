@@ -1,3 +1,5 @@
+//app.jsx
+
 import Chart from "./components/Chart";
 import Controls from "./components/Controls";
 

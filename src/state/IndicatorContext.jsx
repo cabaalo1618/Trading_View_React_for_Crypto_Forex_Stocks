@@ -1,3 +1,5 @@
+//indicatorContext.jsx
+
 import { createContext, useContext, useState } from "react";
 
 const IndicatorContext = createContext();

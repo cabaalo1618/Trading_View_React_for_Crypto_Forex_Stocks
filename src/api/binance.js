@@ -1,3 +1,5 @@
+// binance.js
+
 const BASE_URL = "https://api.binance.com/api/v3";
 
 async function safeFetch(url) {

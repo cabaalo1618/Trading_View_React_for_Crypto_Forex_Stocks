@@ -1,4 +1,6 @@
-import { useEffect, useRef } from "react";
+//chart.jsx
+
+import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   CandlestickSeries,
@@ -17,7 +19,7 @@ import { calculateMA } from "../indicators/movingAverage";
 export default function Chart() {
 
   // REFS
- 
+
   const containerRef = useRef(null);
   const rsiContainerRef = useRef(null);
 
@@ -29,9 +31,11 @@ export default function Chart() {
   const maSeriesRef = useRef(null);
 
   const fibLinesRef = useRef([]);
-  const labelRef = useRef(null);
 
- 
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+
   // GLOBAL STATE
 
   const { symbol, timeframe } = useApp();
@@ -110,19 +114,6 @@ export default function Chart() {
     rsiSeriesRef.current.createPriceLine({ price: 30, color: "#4caf50", lineStyle: 2 });
     rsiSeriesRef.current.createPriceLine({ price: 50, color: "rgba(255,255,255,0.3)" });
 
-    // -------- LABEL --------
-    const label = document.createElement("div");
-    label.style.position = "absolute";
-    label.style.top = "8px";
-    label.style.left = "12px";
-    label.style.color = "#fff";
-    label.style.fontSize = "14px";
-    label.style.fontWeight = "600";
-    label.style.pointerEvents = "none";
-    label.style.fontFamily = "monospace";
-
-    containerRef.current.appendChild(label);
-    labelRef.current = label;
 
     // -------- RESIZE --------
     const resize = new ResizeObserver(entries => {
@@ -137,7 +128,6 @@ export default function Chart() {
       resize.disconnect();
       chartRef.current.remove();
       rsiChartRef.current.remove();
-      label.remove();
     };
   }, []);
 
@@ -147,32 +137,56 @@ export default function Chart() {
   useEffect(() => {
     if (!candleSeriesRef.current) return;
 
-    fetchKlines(symbol, timeframe).then(data => {
-      candleSeriesRef.current.setData(data);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      // Label
-      if (labelRef.current) {
-        labelRef.current.innerText = `${symbol} · ${timeframe}`;
-      }
+        const data = await fetchKlines(symbol, timeframe);
 
-      // MA
-      if (indicators.ma.enabled) {
-        maSeriesRef.current.setData(
-          calculateMA(data, indicators.ma.period)
-        );
-      } else {
-        maSeriesRef.current.setData([]);
-      }
+        candleSeriesRef.current.setData(data);
 
-      // RSI
-      if (indicators.rsi.enabled) {
-        rsiSeriesRef.current.setData(
-          calculateRSI(data, indicators.rsi.period)
-        );
-      } else {
-        rsiSeriesRef.current.setData([]);
+       
+        // MA
+        if (indicators.ma.enabled) {
+          maSeriesRef.current.setData(
+            calculateMA(data, indicators.ma.period)
+          );
+
+          //  Atualiza cor e largura dinamicamente
+          maSeriesRef.current.applyOptions({
+            color: indicators.ma.color,
+            lineWidth: indicators.ma.lineWidth || 2
+          });
+
+        } else {
+          maSeriesRef.current.setData([]);
+        }
+        // RSI
+        if (indicators.rsi.enabled) {
+          rsiSeriesRef.current.setData(
+            calculateRSI(data, indicators.rsi.period)
+          );
+
+          //  Atualiza cor dinamicamente
+          rsiSeriesRef.current.applyOptions({
+            color: indicators.rsi.color,
+            lineWidth: indicators.rsi.lineWidth || 2
+          });
+
+        } else {
+          rsiSeriesRef.current.setData([]);
+        }
+
+      } catch (err) {
+        setError(err.message || "Erro ao carregar dados");
+      } finally {
+        setLoading(false);
       }
-    });
+    };
+
+    loadData();
+
   }, [symbol, timeframe, indicators]);
 
 
@@ -209,10 +223,71 @@ export default function Chart() {
 
   // UI
 
+  // UI
+
   return (
-    <>
+    <div style={{ position: "relative" }}>
+
+      {/* Rótulo */}
+      <div
+        style={{
+          position: "absolute",
+          top: "8px",
+          left: "12px",
+          color: "#fff",
+          fontSize: "14px",
+          fontWeight: "600",
+          fontFamily: "monospace",
+          zIndex: 5,
+          pointerEvents: "none"
+        }}
+      >
+        {symbol} · {timeframe}
+      </div>
+
+      {/* Loading Overlay */}
+      {loading && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "400px",
+            backgroundColor: "rgba(0,0,0,0.6)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 10,
+            color: "#fff"
+          }}
+        >
+          <div className="spinner" />
+          <p style={{ marginTop: "10px" }}>Carregando dados...</p>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div
+          style={{
+            position: "absolute",
+            top: "40px",
+            left: "12px",
+            color: "#ff5252",
+            zIndex: 6
+          }}
+        >
+          ⚠ {error}
+        </div>
+      )}
+
       <div ref={containerRef} style={{ width: "100%", height: "400px" }} />
       <div ref={rsiContainerRef} style={{ width: "100%", height: "150px" }} />
-    </>
+    </div>
   );
 }
+
+
+
